@@ -17,7 +17,7 @@ Because the API keys are associated with your account, using this software may g
 
 ```
 $ go get github.com/chris124567/zoomer
-$ cd $GOPATH/github.com/chris124567/zoomer
+$ cd $GOPATH/src/github.com/chris124567/zoomer
 $ scripts/build.sh
 $ ZOOM_JWT_API_KEY="xxx" ZOOM_JWT_API_SECRET="xxx" ./zoomer -meetingNumber xxxxx -password xxxxx
 ```
@@ -77,7 +77,7 @@ For sending: Look at `zoom/requests.go` and switch out the struct and message ty
 
 For receiving: Create a definition for the type and update the getPointerForBody function in `zoom/message.go.`
 
-## Information on Protocol
+## INFORMATION ON PROTOCOL
 The protocol used by the Zoom Web client is basically just JSON over Websockets.  The messages look something like this:
 
 ```
@@ -99,7 +99,7 @@ The thing in the comments to the right is the struct type for that message, whic
 
 Also, the server and client both have sequence numbers ("seq") for the messages they send but it doesn't appear to be used for anything (?).
 
-## TODO (in descending order of priority)
+## TODO (DESCENDING ORDER OF PRIORITY)
 - Organize `zoom/message_types.go` and general refactoring
 - Support for meetings where you don't have the password but just a Zoom url with the "pwd" parameter in it (anyone know anything about this??)
 - Thoroughly test things
