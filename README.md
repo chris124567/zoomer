@@ -100,6 +100,7 @@ The thing in the comments to the right is the struct type for that message, whic
 Also, the server and client both have sequence numbers ("seq") for the messages they send but it doesn't appear to be used for anything (?).
 
 ## TODO (DESCENDING ORDER OF PRIORITY)
+- Gracefully exit/disconnect
 - Organize `zoom/message_types.go` and general refactoring
 - Support for meetings where you don't have the password but just a Zoom url with the "pwd" parameter in it (anyone know anything about this??)
 - Thoroughly test things
