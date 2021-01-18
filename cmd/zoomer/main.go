@@ -3,11 +3,12 @@ package main
 import (
 	"errors"
 	"flag"
-	"github.com/chris124567/zoomer/pkg/zoom"
 	"log"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/chris124567/zoomer/pkg/zoom"
 )
 
 func main() {
@@ -40,45 +41,24 @@ func main() {
 	log.Print(websocketUrl)
 
 	// the third argument is the "onmessage" function.  it will be triggered everytime the websocket client receives a message
-	err = session.MakeWebsocketConnection(websocketUrl, cookieString, func(session *zoom.ZoomSession, message *zoom.GenericZoomMessage) error {
-		// dont attempt to get body if its just a keep alive
-		if message.Evt == zoom.WS_CONN_KEEPALIVE {
-			return nil
-		}
-
-		// get the body of the message (this is the important part)
-		body, err := zoom.GetMessageBody(message)
-		if err != nil {
-			log.Printf("%+v", err)
-			return err
-		}
-		log.Printf("%+v", body)
-
-		switch message.Evt { // the events in this switch statement are the events we are interested in
-		case zoom.WS_CONF_ROSTER_INDICATION: // respond to updates in roster
-			// because of how golang works, you have to convert the generic interface{} body data into a specific type when you work with it.  the struct definitions for message types are listed alongside them as comments in zoom/constant.go
-			bodyDataTyped := body.(*zoom.ConferenceRosterIndication)
-
+	err = session.MakeWebsocketConnection(websocketUrl, cookieString, func(session *zoom.ZoomSession, message zoom.Message) error {
+		switch m := message.(type) {
+		case *zoom.ConferenceRosterIndication:
 			// if we get an indication that someone joined the meeting, welcome them
-			for _, person := range bodyDataTyped.Add {
+			for _, person := range m.Add {
 				// don't welcome ourselves
 				if person.ID != session.JoinInfo.UserID {
 					// you could switch out EVERYONE_CHAT_ID with person.ID to private message them instead of sending the welcome to everyone
 					session.SendChatMessage(zoom.EVERYONE_CHAT_ID, "Welcome to the meeting, "+string(person.Dn2)+"!")
 				}
 			}
-
-		case zoom.WS_CONF_CHAT_INDICATION: // respond to chats
-			bodyDataTyped := body.(*zoom.ConferenceChatIndication)
-
-			messageText := string(bodyDataTyped.Text)
-			err := handleChatMessage(session, bodyDataTyped, messageText)
-			if err != nil {
-				return err
-			}
+			return nil
+		case *zoom.ConferenceChatIndication:
+			// respond to chats
+			return handleChatMessage(session, m, string(m.Text))
+		default:
+			return nil
 		}
-
-		return nil
 	})
 
 	if err != nil {
