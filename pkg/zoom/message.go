@@ -3,202 +3,82 @@ package zoom
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"log"
+	"reflect"
+
+	"github.com/gorilla/websocket"
 )
 
-func GetMessageBody(message *GenericZoomMessage) (interface{}, error) {
-	// keep alive messages have no body
-	if message.Evt == WS_CONN_KEEPALIVE {
-		return nil, fmt.Errorf("Failed to get message body: Keep alive messages have no body")
-	}
+var msgTypes = map[int]reflect.Type{
+	WS_CONN_KEEPALIVE:       reflect.TypeOf(WebsocketConnectionKeepalive{}),
+	WS_CONF_JOIN_RES:        reflect.TypeOf(JoinConferenceResponse{}),
+	WS_CONF_CHAT_INDICATION: reflect.TypeOf(ConferenceChatIndication{}),
+	// sender implemented, working
+	WS_CONF_CHAT_REQ:             reflect.TypeOf(ConferenceChatRequest{}),
+	WS_CONF_ATTRIBUTE_INDICATION: reflect.TypeOf(ConferenceAttributeIndication{}),
+	WS_CONF_ROSTER_INDICATION:    reflect.TypeOf(ConferenceRosterIndication{}),
+	// sender implemented, working
+	WS_AUDIO_VOIP_JOIN_CHANNEL_REQ: reflect.TypeOf(AudioVoipJoinChannelRequest{}),
+	// sender implemented, working
+	WS_AUDIO_MUTE_REQ: reflect.TypeOf(AudioMuteRequest{}),
+	// sender implemented, working
+	WS_CONF_SET_SHARE_STATUS_REQ: reflect.TypeOf(SetShareStatusRequest{}),
+	// sender implemented, working
+	WS_CONF_RENAME_REQ: reflect.TypeOf(ConferenceRenameRequest{}),
+	// sender implemented, untested
+	WS_AUDIO_MUTEALL_REQ: reflect.TypeOf(AudioMuteAllRequest{}),
+	// sender implemented, untested
+	WS_CONF_SET_MUTE_UPON_ENTRY_REQ: reflect.TypeOf(ConferenceSetMuteUponEntryRequest{}),
+	// sender implemented, untested
+	WS_CONF_ALLOW_UNMUTE_AUDIO_REQ: reflect.TypeOf(ConferenceAllowUnmuteAudioRequest{}),
+	// sender implemented, untested
+	WS_CONF_ALLOW_PARTICIPANT_RENAME_REQ: reflect.TypeOf(ConferenceAllowParticipantRenameRequest{}),
+	// sender implemented, untested
+	WS_CONF_ALLOW_UNMUTE_VIDEO_REQ: reflect.TypeOf(ConferenceAllowUnmuteVideoRequest{}),
+	// sender implemented, working
+	// yes there's a typo here, tell that to zoom
+	WS_CONF_CHAT_PRIVILEDGE_REQ:       reflect.TypeOf(ConferenceChatPrivilegeRequest{}),
+	WS_CONF_AVATAR_PERMISSION_CHANGED: reflect.TypeOf(ConferenceAvatarPermissionChanged{}),
+	// sender implemented, untested
+	WS_CONF_LOCK_SHARE_REQ:           reflect.TypeOf(ConferenceLockShareRequest{}),
+	WS_CONF_LOCAL_RECORD_INDICATION:  reflect.TypeOf(ConferenceLocalRecordIndication{}),
+	WS_CONF_OPTION_INDICATION:        reflect.TypeOf(ConferenceOptionIndication{}),
+	WS_CONF_DC_REGION_INDICATION:     reflect.TypeOf(ConferenceDCRegionIndication{}),
+	WS_AUDIO_SSRC_INDICATION:         reflect.TypeOf(SSRCIndication{}),
+	WS_VIDEO_SSRC_INDICATION:         reflect.TypeOf(SSRCIndication{}),
+	WS_VIDEO_ACTIVE_INDICATION:       reflect.TypeOf(VideoActiveIndication{}),
+	WS_SHARING_STATUS_INDICATION:     reflect.TypeOf(SharingStatusIndication{}),
+	WS_CONF_COHOST_CHANGE_INDICATION: reflect.TypeOf(ConferenceCohostChangeIndication{}),
+	WS_AUDIO_ASN_INDICATION:          reflect.TypeOf(AudioAsnIndication{}),
+	WS_CONF_BO_ATTRIBUTE_INDICATION:  reflect.TypeOf(ConferenceBreakoutRoomAttributeIndication{}),
+	WS_CONF_BO_COMMAND_INDICATION:    reflect.TypeOf(ConferenceBreakoutRoomCommandIndication{}),
+	// sender implemented, untested
+	WS_CONF_BO_START_REQ: reflect.TypeOf(ConferenceBreakoutRoomStartRequest{}),
+	// sender implemented, untested
+	WS_CONF_BO_BROADCAST_REQ: reflect.TypeOf(ConferenceBreakoutRoomBroadcastRequest{}),
+	// sender implemented, working
+	WS_CONF_BO_JOIN_REQ: reflect.TypeOf(ConferenceBreakoutRoomJoinRequest{}),
+	WS_CONF_BO_JOIN_RES: reflect.TypeOf(ConferenceBreakoutRoomJoinResponse{}),
+	// sender implemented, untested
+	WS_CONF_END_REQ: reflect.TypeOf(ConferenceEndRequest{}),
+	// sender implemented, doesn't work???
+	WS_CONF_BO_TOKEN_BATCH_REQ:     reflect.TypeOf(ConferenceBreakoutRoomTokenBatchRequest{}),
+	WS_CONF_BO_TOKEN_RES:           reflect.TypeOf(ConferenceBreakoutRoomTokenResponse{}),
+	WS_CONF_HOST_CHANGE_INDICATION: reflect.TypeOf(ConferenceHostChangeIndication{}),
+	WS_CONF_END_INDICATION:         reflect.TypeOf(ConferenceEndIndication{}),
+}
 
-	bodyDataPointer := getPointerForBody(message)
-	if bodyDataPointer == nil {
+func GetMessageBody(message *GenericZoomMessage) (interface{}, error) {
+	typ := msgTypes[message.Evt]
+	if typ == nil {
 		return nil, fmt.Errorf("Failed to get message body: missing type definition in zoom/message.go")
 	}
-
-	err := json.Unmarshal(message.Body, &bodyDataPointer)
+	p := reflect.New(typ).Interface()
+	err := json.Unmarshal(message.Body, p)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse body JSON: %+v", err)
 	}
-	return bodyDataPointer, nil
-
-}
-
-func getPointerForBody(message *GenericZoomMessage) interface{} {
-	switch message.Evt {
-	case WS_CONN_KEEPALIVE:
-		var p WebsocketConnectionKeepalive
-		return &p
-
-	case WS_CONF_JOIN_RES:
-		var p JoinConferenceResponse
-		return &p
-
-	case WS_CONF_CHAT_INDICATION:
-		var p ConferenceChatIndication
-		return &p
-
-	// sender implemented, working
-	case WS_CONF_CHAT_REQ:
-		var p ConferenceChatRequest
-		return &p
-
-	case WS_CONF_ATTRIBUTE_INDICATION:
-		var p ConferenceAttributeIndication
-		return &p
-
-	case WS_CONF_ROSTER_INDICATION:
-		var p ConferenceRosterIndication
-		return &p
-
-	// sender implemented, working
-	case WS_AUDIO_VOIP_JOIN_CHANNEL_REQ:
-		var p AudioVoipJoinChannelRequest
-		return &p
-
-	// sender implemented, working
-	case WS_AUDIO_MUTE_REQ:
-		var p AudioMuteRequest
-		return &p
-
-	// sender implemented, working
-	case WS_CONF_SET_SHARE_STATUS_REQ:
-		var p SetShareStatusRequest
-		return &p
-
-	// sender implemented, working
-	case WS_CONF_RENAME_REQ:
-		var p ConferenceRenameRequest
-		return &p
-
-	// sender implemented, untested
-	case WS_AUDIO_MUTEALL_REQ:
-		var p AudioMuteAllRequest
-		return &p
-
-	// sender implemented, untested
-	case WS_CONF_SET_MUTE_UPON_ENTRY_REQ:
-		var p ConferenceSetMuteUponEntryRequest
-		return &p
-
-	// sender implemented, untested
-	case WS_CONF_ALLOW_UNMUTE_AUDIO_REQ:
-		var p ConferenceAllowUnmuteAudioRequest
-		return &p
-
-	// sender implemented, untested
-	case WS_CONF_ALLOW_PARTICIPANT_RENAME_REQ:
-		var p ConferenceAllowParticipantRenameRequest
-		return &p
-
-	// sender implemented, untested
-	case WS_CONF_ALLOW_UNMUTE_VIDEO_REQ:
-		var p ConferenceAllowUnmuteVideoRequest
-		return &p
-
-	// sender implemented, working
-	case WS_CONF_CHAT_PRIVILEDGE_REQ: // yes there's a typo here, tell that to zoom
-		var p ConferenceChatPrivilegeRequest
-		return &p
-
-	case WS_CONF_AVATAR_PERMISSION_CHANGED:
-		var p ConferenceAvatarPermissionChanged
-		return &p
-
-	// sender implemented, untested
-	case WS_CONF_LOCK_SHARE_REQ:
-		var p ConferenceLockShareRequest
-		return &p
-
-	case WS_CONF_LOCAL_RECORD_INDICATION:
-		var p ConferenceLocalRecordIndication
-		return &p
-
-	case WS_CONF_OPTION_INDICATION:
-		var p ConferenceOptionIndication
-		return &p
-
-	case WS_CONF_DC_REGION_INDICATION:
-		var p ConferenceDCRegionIndication
-		return &p
-
-	case WS_AUDIO_SSRC_INDICATION:
-		var p SSRCIndication
-		return &p
-
-	case WS_VIDEO_SSRC_INDICATION:
-		var p SSRCIndication
-		return &p
-
-	case WS_VIDEO_ACTIVE_INDICATION:
-		var p VideoActiveIndication
-		return &p
-
-	case WS_SHARING_STATUS_INDICATION:
-		var p SharingStatusIndication
-		return &p
-
-	case WS_CONF_COHOST_CHANGE_INDICATION:
-		var p ConferenceCohostChangeIndication
-		return &p
-
-	case WS_AUDIO_ASN_INDICATION:
-		var p AudioAsnIndication
-		return &p
-
-	case WS_CONF_BO_ATTRIBUTE_INDICATION:
-		var p ConferenceBreakoutRoomAttributeIndication
-		return &p
-
-	case WS_CONF_BO_COMMAND_INDICATION:
-		var p ConferenceBreakoutRoomCommandIndication
-		return &p
-
-	// sender implemented, untested
-	case WS_CONF_BO_START_REQ:
-		var p ConferenceBreakoutRoomStartRequest
-		return &p
-
-	// sender implemented, untested
-	case WS_CONF_BO_BROADCAST_REQ:
-		var p ConferenceBreakoutRoomBroadcastRequest
-		return &p
-
-	// sender implemented, working
-	case WS_CONF_BO_JOIN_REQ:
-		var p ConferenceBreakoutRoomJoinRequest
-		return &p
-
-	case WS_CONF_BO_JOIN_RES:
-		var p ConferenceBreakoutRoomJoinResponse
-		return &p
-
-	// sender implemented, untested
-	case WS_CONF_END_REQ:
-		var p ConferenceEndRequest
-		return &p
-
-	// sender implemented, doesn't work???
-	case WS_CONF_BO_TOKEN_BATCH_REQ:
-		var p ConferenceBreakoutRoomTokenBatchRequest
-		return &p
-
-	case WS_CONF_BO_TOKEN_RES:
-		var p ConferenceBreakoutRoomTokenResponse
-		return &p
-
-	case WS_CONF_HOST_CHANGE_INDICATION:
-		var p ConferenceHostChangeIndication
-		return &p
-
-	case WS_CONF_END_INDICATION:
-		var p ConferenceEndIndication
-		return &p
-	}
-
-	return nil
+	return p, nil
 }
 
 func (session *ZoomSession) SendMessage(connection *websocket.Conn, eventNumber int, body interface{}) error {

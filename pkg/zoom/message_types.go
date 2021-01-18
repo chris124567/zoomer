@@ -10,6 +10,9 @@ import (
 WEBSOCKET MESSAGE TYPES
 */
 
+type Message interface {
+}
+
 type GenericZoomMessage struct {
 	Body json.RawMessage `json:"body,omitempty"`
 	Evt  int             `json:"evt"`

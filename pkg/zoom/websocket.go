@@ -120,7 +120,7 @@ func (session *ZoomSession) GetWebsocketUrl(meetingInfo *MeetingInfo, wasInWaiti
 	}).String(), nil
 }
 
-type onMessage func(session *ZoomSession, message *GenericZoomMessage) error
+type onMessage func(session *ZoomSession, message Message) error
 
 func (session *ZoomSession) MakeWebsocketConnection(websocketUrl string, cookieString string, onMessageFunction onMessage) error {
 	websocketHeaders := http.Header{}
@@ -205,7 +205,13 @@ func (session *ZoomSession) MakeWebsocketConnection(websocketUrl string, cookieS
 
 			// dont run the user defined functions in the waiting room
 			if !wasInWaitingRoom {
-				err = onMessageFunction(session, message)
+				// convert generic json message to go type
+				m, err := GetMessageBody(message)
+				if err != nil {
+					log.Printf("Decoding message failed: %+v", err)
+					continue
+				}
+				err = onMessageFunction(session, m)
 				if err != nil {
 					log.Printf("User defined function failed: %+v", err)
 				}
