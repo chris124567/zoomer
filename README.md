@@ -24,10 +24,10 @@ $ ZOOM_JWT_API_KEY="xxx" ZOOM_JWT_API_SECRET="xxx" ./zoomer -meetingNumber xxxxx
 
 Feel free to use the demo as a template.  If you want to use the library elsewhere just import `github.com/chris124567/zoomer/pkg/zoom`.
 
-## DEMO WALKTHROUGH
-See comments in `cmd/zoomer/main.go`
+### DEMO WALKTHROUGH
+See the comments in `cmd/zoomer/main.go`
 
-## FEATURES / Supported Message Types
+## FEATURES / SUPPORTED MESSAGE TYPES
 | Feature                                                                                                            | Send/recv | Message Name                              | Function (if send) / struct type (if recv) | Host Required               | Tested |
 | ------------------------------------------------------------------------------------------------------------------ | --------- | ----------------------------------------- | ------------------------------------------ | --------------------------- | ------ |
 | Send a chat message                                                                                                | Send      | WS\_CONF\_CHAT\_REQ                       | ZoomSession.SendChatMessage                | No                          | Yes    |
@@ -74,6 +74,7 @@ See comments in `cmd/zoomer/main.go`
 Note that you are free to construct your own message types for any I have not implemented.
 
 For sending: Look at `zoom/requests.go` and switch out the struct and message type names for your new message type
+
 For receiving: Create a definition for the type and update the getPointerForBody function in `zoom/message.go.`
 
 ## Information on Protocol
