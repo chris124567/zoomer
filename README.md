@@ -1,6 +1,6 @@
 # zoomer - Bot library for Zoom meetings
 
-Good bot support is part of what makes Discord so nice to use.  Unfortunately, the official Zoom API is basically only useful for scheduling meetings and using Zoom Chat, not for making [in-meeting](https://devforum.zoom.us/t/in-meeting-chat-api/39948/4) bots.  So I decided to make bring this feature to Zoom myself.
+Good bot support is part of what makes Discord so nice to use.  Unfortunately, the official Zoom API is basically only useful for scheduling meetings and using Zoom Chat, not for making [in-meeting](https://devforum.zoom.us/t/in-meeting-chat-api/39948/4) bots.  So I decided to bring this feature to Zoom myself.
 
 Here is a demo of a basic, ~130 lines of code bot:
 ![Demonstration of basic Zoom bot functionality, controlled via meeting chat](other/demo.gif)
