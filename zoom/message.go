@@ -74,34 +74,31 @@ func GetMessageBody(message *GenericZoomMessage) (interface{}, error) {
 		return nil, fmt.Errorf("Failed to get message body: missing type definition in zoom/message.go")
 	}
 	p := reflect.New(typ).Interface()
-	err := json.Unmarshal(message.Body, p)
-	if err != nil {
+	if err := json.Unmarshal(message.Body, p); err != nil {
 		return nil, fmt.Errorf("Failed to parse body JSON: %+v", err)
 	}
 	return p, nil
 }
 
 func (session *ZoomSession) SendMessage(connection *websocket.Conn, eventNumber int, body interface{}) error {
-	session.mutex.Lock() // gorilla/websocket only allows for 1 sender at a time + the send sequence number shouldn't be written to simultaneously
-	defer session.mutex.Unlock()
+	session.mu.Lock() // gorilla/websocket only allows for 1 sender at a time + the send sequence number shouldn't be written to simultaneously
+	defer session.mu.Unlock()
 
-	// increment number
-	session.sendSequenceNumber += 1
+	session.sendSequenceNumber++
 
-	newMessage := GenericZoomMessage{
+	message := GenericZoomMessage{
 		Evt: eventNumber,
 		Seq: session.sendSequenceNumber,
 	}
-
 	if body != nil {
 		// body is a json.rawmessage so we have to do this
 		bodyBytes, err := json.Marshal(body)
 		if err != nil {
 			return err
 		}
-		newMessage.Body = bodyBytes
+		message.Body = bodyBytes
 	}
-	log.Printf("Sending message (Evt: %s; Seq: %d): %s", MessageNumberToName[newMessage.Evt], newMessage.Seq, string(newMessage.Body))
+	log.Printf("Sending message (Evt: %s; Seq: %d): %s", MessageNumberToName[message.Evt], message.Seq, string(message.Body))
 
-	return connection.WriteJSON(newMessage)
+	return connection.WriteJSON(message)
 }

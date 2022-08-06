@@ -264,8 +264,7 @@ func (b *ConferenceBreakoutRoomAttributeIndicationDataAlias) UnmarshalJSON(data 
 	}
 
 	real := ConferenceBreakoutRoomAttributeIndicationData{}
-	err = json.Unmarshal(dataBytes, &real)
-	if err != nil {
+	if err := json.Unmarshal(dataBytes, &real); err != nil {
 		return err
 	}
 	*b = (ConferenceBreakoutRoomAttributeIndicationDataAlias(real))
@@ -278,7 +277,7 @@ func (b ConferenceBreakoutRoomAttributeIndicationDataAlias) MarshalJSON() ([]byt
 	if err != nil {
 		return nil, err
 	}
-	return []byte("\"" + base64.StdEncoding.EncodeToString([]byte(jsonBytes)) + "\""), nil
+	return []byte("\"" + base64.StdEncoding.EncodeToString(jsonBytes) + "\""), nil
 }
 
 // golang usually allows []bytes to be represented by b64 strings but zoom sends them with no padding which breaks it so this is a custom type to allow for lack of padding

@@ -3,27 +3,30 @@ package zoom
 import (
 	"crypto/tls"
 	"errors"
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 )
 
 type ZoomSession struct {
-	MeetingNumber       string
-	MeetingPassword     string
-	Username            string
-	HardwareID          uuid.UUID
-	ZoomJwtApiKey       string
-	ZoomJwtApiSecret    string
-	JoinInfo            JoinConferenceResponse
-	ProxyURL            *url.URL
+	mu sync.Mutex
+
+	MeetingNumber    string
+	MeetingPassword  string
+	Username         string
+	HardwareID       uuid.UUID
+	ZoomJwtApiKey    string
+	ZoomJwtApiSecret string
+	JoinInfo         JoinConferenceResponse
+	ProxyURL         *url.URL
+
 	meetingOpt          string
 	httpClient          *http.Client
-	mutex               sync.Mutex
 	websocketConnection *websocket.Conn
 	sendSequenceNumber  uint32
 }
@@ -48,6 +51,7 @@ func NewZoomSession(meetingNumber string, meetingPassword string, username strin
 	session.httpClient = &http.Client{
 		Timeout: 35 * time.Second, // largeish timeout for slow proxies
 	}
+
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true, // ignore certificate errors so we can use charles to debug
@@ -55,7 +59,6 @@ func NewZoomSession(meetingNumber string, meetingPassword string, username strin
 		DisableCompression: false,
 		DisableKeepAlives:  false,
 	}
-
 	if proxyURL != "" {
 		proxyUrlParsed, err := url.Parse(proxyURL)
 		if err != nil {

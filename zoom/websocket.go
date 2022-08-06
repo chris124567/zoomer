@@ -5,10 +5,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/gorilla/websocket"
+
 	// "github.com/google/uuid"
 	"encoding/json"
 	"log"
@@ -16,6 +18,18 @@ import (
 	"net/url"
 	"strconv"
 )
+
+func getRwgPingServer(meetingInfo *MeetingInfo) *RwgInfo {
+	var rwgPingInfo RwgInfo
+
+	for key, value := range meetingInfo.Result.EncryptedRWC {
+		rwgPingInfo.Rwg = key
+		rwgPingInfo.RwcAuth = value
+		break
+	}
+
+	return &rwgPingInfo
+}
 
 func (session *ZoomSession) GetWebsocketUrl(meetingInfo *MeetingInfo, wasInWaitingRoom bool) (string, error) {
 	pingRwcServer := getRwgPingServer(meetingInfo)
@@ -30,12 +44,11 @@ func (session *ZoomSession) GetWebsocketUrl(meetingInfo *MeetingInfo, wasInWaiti
 
 	// query string for websocket url
 	values := url.Values{}
-
 	values.Set("rwcAuth", rwgInfo.RwcAuth)
 	values.Set("dn2", base64.StdEncoding.EncodeToString([]byte(meetingInfo.Result.UserName)))
 	values.Set("auth", meetingInfo.Result.Auth)
 	values.Set("sign", meetingInfo.Result.Sign)
-	values.Set("browser", USER_AGENT_SHORTHAND)
+	values.Set("browser", userAgentShorthand)
 	values.Set("trackAuth", meetingInfo.Result.TrackAuth)
 	values.Set("mid", meetingInfo.Result.Mid)
 	values.Set("tid", meetingInfo.Result.Tid)
@@ -112,25 +125,12 @@ func (session *ZoomSession) GetWebsocketUrl(meetingInfo *MeetingInfo, wasInWaiti
 		values.Set("participantID", strconv.Itoa(session.JoinInfo.ParticipantID))
 	}
 
-	return (&url.URL{
-		Scheme:   "wss",
-		Host:     rwgInfo.Rwg,
-		Path:     fmt.Sprintf("/wc/api/%s", meetingInfo.Result.MeetingNumber),
-		RawQuery: values.Encode(),
-	}).String(), nil
+	return fmt.Sprintf("wss://%s/wc/api/%s?%s", rwgInfo.Rwg, meetingInfo.Result.MeetingNumber, values.Encode()), nil
 }
 
 type onMessage func(session *ZoomSession, message Message) error
 
 func (session *ZoomSession) MakeWebsocketConnection(websocketUrl string, cookieString string, onMessageFunction onMessage) error {
-	websocketHeaders := http.Header{}
-	websocketHeaders.Set("Accept-Language", "en-US,en;q=0.9")
-	websocketHeaders.Set("Cache-Control", "no-cache")
-	websocketHeaders.Set("Origin", "http://localhost:9999")
-	websocketHeaders.Set("Pragma", "no-cache")
-	websocketHeaders.Set("User-Agent", USER_AGENT)
-	websocketHeaders.Set("Cookie", cookieString)
-
 	dialer := websocket.Dialer{
 		// TODO: REMOVE -- DEV ONLY FOR CHARLES PROXY
 		TLSClientConfig: &tls.Config{
@@ -141,30 +141,33 @@ func (session *ZoomSession) MakeWebsocketConnection(websocketUrl string, cookieS
 		dialer.Proxy = http.ProxyURL(session.ProxyURL)
 	}
 
-	connection, _, err := dialer.Dial(websocketUrl, websocketHeaders)
+	connection, _, err := dialer.Dial(websocketUrl, http.Header{
+		"Accept-Language": []string{"en-US,en;q=0.9"},
+		"Cache-Control":   []string{"no-cache"},
+		"Origin":          []string{"http://localhost:9999"},
+		"Pragma":          []string{"no-cache"},
+		"User-Agent":      []string{userAgent},
+		"Cookie":          []string{cookieString},
+	})
 	if err != nil {
 		return err
 	}
-	session.websocketConnection = connection
-
 	defer connection.Close()
 
-	done := make(chan struct{})
+	session.websocketConnection = connection
 
-	var message *GenericZoomMessage
-	var wasInWaitingRoom bool = false
+	wasInWaitingRoom := false
+	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		for {
-			// reset struct
-			message = &GenericZoomMessage{}
+			var message GenericZoomMessage
 
-			err := connection.ReadJSON(&message)
-			if err != nil {
-				log.Print("failed to read:", err)
+			if err := connection.ReadJSON(&message); err != nil {
+				// log.Print("failed to read:", err)
 				return
 			}
-			log.Printf("Received message (Evt: %s = %d; Seq: %d): %s", MessageNumberToName[message.Evt], message.Evt, message.Seq, string(message.Body))
+			// log.Printf("Received message (Evt: %s = %d; Seq: %d): %s", MessageNumberToName[message.Evt], message.Evt, message.Seq, string(message.Body))
 
 			switch message.Evt {
 			/*
@@ -172,48 +175,44 @@ func (session *ZoomSession) MakeWebsocketConnection(websocketUrl string, cookieS
 				important that this is done before any other handling functions
 			*/
 			case WS_CONF_JOIN_RES:
-				bodyData := JoinConferenceResponse{}
-				err := json.Unmarshal(message.Body, &bodyData)
-				if err != nil {
-					log.Print("Failed to unmarshal json: %+v", err)
+				var body JoinConferenceResponse
+				if err := json.Unmarshal(message.Body, &body); err != nil {
+					// log.Print("Failed to unmarshal json: %+v", err)
 					return
 				}
-				session.JoinInfo = bodyData
+				session.JoinInfo = body
 			/* figure out whether we are in the waiting room or not */
 			case WS_CONF_HOLD_CHANGE_INDICATION:
-				bodyData := ConferenceHoldChangeIndication{}
-				err := json.Unmarshal(message.Body, &bodyData)
-				if err != nil {
-					log.Print("Failed to unmarshal json: %+v", err)
+				var body ConferenceHoldChangeIndication
+				if err := json.Unmarshal(message.Body, &body); err != nil {
+					// log.Print("Failed to unmarshal json: %+v", err)
 					return
 				}
-				if bodyData.BHold == true {
+				if body.BHold == true {
 					wasInWaitingRoom = true
 				}
 			/* get the opt for the waiting room */
 			case WS_CONF_OPTION_INDICATION:
 				if wasInWaitingRoom {
-					bodyData := ConferenceOptionIndication{}
-					err := json.Unmarshal(message.Body, &bodyData)
-					if err != nil {
-						log.Print("Failed to unmarshal json: %+v", err)
+					var body ConferenceOptionIndication
+					if err := json.Unmarshal(message.Body, &body); err != nil {
+						// log.Print("Failed to unmarshal json: %+v", err)
 						return
 					}
-					session.meetingOpt = bodyData.Opt
+					session.meetingOpt = body.Opt
 				}
 			}
 
 			// dont run the user defined functions in the waiting room
 			if !wasInWaitingRoom {
 				// convert generic json message to go type
-				m, err := GetMessageBody(message)
+				m, err := GetMessageBody(&message)
 				if err != nil {
-					log.Printf("Decoding message failed: %+v", err)
+					// log.Printf("Decoding message failed: %+v", err)
 					continue
 				}
-				err = onMessageFunction(session, m)
-				if err != nil {
-					log.Printf("User defined function failed: %+v", err)
+				if err := onMessageFunction(session, m); err != nil {
+					// log.Printf("User defined function failed: %+v", err)
 				}
 			}
 		}
@@ -244,8 +243,7 @@ func (session *ZoomSession) MakeWebsocketConnection(websocketUrl string, cookieS
 		case <-interrupt:
 			// Cleanly close the connection by sending a close message and then
 			// waiting (with timeout) for the server to close the connection.
-			err := connection.WriteMessage(websocket.CloseMessage, []byte(""))
-			if err != nil {
+			if err := connection.WriteMessage(websocket.CloseMessage, []byte("")); err != nil {
 				return err
 			}
 			<-done

@@ -107,12 +107,9 @@ type MeetingOptionsAlias MeetingOptions
 func (m *MeetingOptionsAlias) UnmarshalJSON(data []byte) error {
 	// Try string first
 	var str string
-	var originalTypeData MeetingOptions
-
-	err := json.Unmarshal(data, &str)
-	if err == nil {
-		err := json.Unmarshal([]byte(str), &originalTypeData)
-		if err != nil {
+	if err := json.Unmarshal(data, &str); err == nil {
+		var originalTypeData MeetingOptions
+		if err := json.Unmarshal([]byte(str), &originalTypeData); err != nil {
 			return err
 		}
 		*m = MeetingOptionsAlias(originalTypeData)
@@ -127,12 +124,9 @@ type EncryptedRWCServersAlias map[string]string
 func (m *EncryptedRWCServersAlias) UnmarshalJSON(data []byte) error {
 	// Try string first
 	var str string
-	var originalTypeData map[string]string
-
-	err := json.Unmarshal(data, &str)
-	if err == nil {
-		err := json.Unmarshal([]byte(str), &originalTypeData)
-		if err != nil {
+	if err := json.Unmarshal(data, &str); err == nil {
+		var originalTypeData map[string]string
+		if err := json.Unmarshal([]byte(str), &originalTypeData); err != nil {
 			return err
 		}
 		*m = EncryptedRWCServersAlias(originalTypeData)
@@ -147,12 +141,9 @@ type CallOutCountryAlias CallOutCountry
 func (m *CallOutCountryAlias) UnmarshalJSON(data []byte) error {
 	// Try string first
 	var str string
-	var originalTypeData CallOutCountry
-
-	err := json.Unmarshal(data, &str)
-	if err == nil {
-		err := json.Unmarshal([]byte(str), &originalTypeData)
-		if err != nil {
+	if err := json.Unmarshal(data, &str); err == nil {
+		var originalTypeData CallOutCountry
+		if err := json.Unmarshal([]byte(str), &originalTypeData); err != nil {
 			return err
 		}
 		*m = CallOutCountryAlias(originalTypeData)
