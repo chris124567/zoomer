@@ -30,7 +30,7 @@ func (session *ZoomSession) GetWebsocketUrl(meetingInfo *MeetingInfo, wasInWaiti
 	values.Set("dn2", base64.StdEncoding.EncodeToString([]byte(meetingInfo.Result.UserName)))
 	values.Set("auth", meetingInfo.Result.Auth)
 	values.Set("sign", meetingInfo.Result.Sign)
-	values.Set("browser", USER_AGENT_SHORTHAND)
+	values.Set("browser", userAgentShorthand)
 	values.Set("trackAuth", meetingInfo.Result.TrackAuth)
 	values.Set("mid", meetingInfo.Result.Mid)
 	values.Set("tid", meetingInfo.Result.Tid)
@@ -91,7 +91,7 @@ func (session *ZoomSession) makeWebsocketConnection(onMessageFunction onMessage,
 	websocketHeaders.Set("Cache-Control", "no-cache")
 	websocketHeaders.Set("Origin", "https://us05web.zoom.us")
 	websocketHeaders.Set("Pragma", "no-cache")
-	websocketHeaders.Set("User-Agent", USER_AGENT)
+	websocketHeaders.Set("User-Agent", userAgent)
 	websocketHeaders.Set("Cookie", cookieString)
 
 	dialer := websocket.Dialer{}
