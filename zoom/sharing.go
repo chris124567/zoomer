@@ -1,4 +1,4 @@
-package api
+package zoom
 
 import (
 	"encoding/hex"
@@ -103,7 +103,7 @@ func createWebsocket(name string, websocketUrl string) (*websocket.Conn, error) 
 	websocketHeaders.Set("Cache-Control", "no-cache")
 	websocketHeaders.Set("Origin", "https://zoom.us")
 	websocketHeaders.Set("Pragma", "no-cache")
-	websocketHeaders.Set("User-Agent", USER_AGENT)
+	websocketHeaders.Set("User-Agent", userAgent)
 
 	connection, _, err := dialer.Dial(websocketUrl, websocketHeaders)
 	if err != nil {

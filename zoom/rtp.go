@@ -1,4 +1,4 @@
-package api
+package zoom
 
 import (
 	"encoding/binary"
@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/RealKeyboardWarrior/ZoomExternalC2/zoom/api/protocol"
+	"github.com/chris124567/zoomer/zoom/api/protocol"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 )
