@@ -1,19 +1,30 @@
 package zoom
 
 func (session *ZoomSession) SendChatMessage(destNodeID int, text string) error {
-	return session.SendMessage(session.websocketConnection, WS_CONF_CHAT_REQ, ConferenceChatRequest{
+	sendBody := ConferenceChatRequest{
 		DestNodeID: destNodeID,
 		Sn:         []byte(session.JoinInfo.ZoomID),
 		Text:       []byte(text),
-	})
+	}
+	err := session.SendMessage(session.websocketConnection, WS_CONF_CHAT_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
+
 }
 
 // host required
 func (session *ZoomSession) RequestBreakoutRoomToken(topic string, index int) error {
-	return session.SendMessage(session.websocketConnection, WS_CONF_BO_TOKEN_BATCH_REQ, ConferenceBreakoutRoomTokenBatchRequest{
+	sendBody := ConferenceBreakoutRoomTokenBatchRequest{
 		Topic: topic,
 		Index: index,
-	})
+	}
+	err := session.SendMessage(session.websocketConnection, WS_CONF_BO_TOKEN_BATCH_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // host required
@@ -31,16 +42,28 @@ func (session *ZoomSession) CreateBreakoutRoom(rooms []BreakoutRoomItem, autoJoi
 		StartTimeOnMMR: 464,
 		ItemList:       rooms,
 	}
-	return session.SendMessage(session.websocketConnection, WS_CONF_BO_START_REQ, ConferenceBreakoutRoomStartRequest{
+
+	sendBody := ConferenceBreakoutRoomStartRequest{
 		Proto: ConferenceBreakoutRoomAttributeIndicationDataAlias(protoData),
-	})
+	}
+
+	err := session.SendMessage(session.websocketConnection, WS_CONF_BO_START_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // host required
 func (session *ZoomSession) BreakoutRoomBroadcast(text string) error {
-	return session.SendMessage(session.websocketConnection, WS_CONF_BO_BROADCAST_REQ, ConferenceBreakoutRoomBroadcastRequest{
+	sendBody := ConferenceBreakoutRoomBroadcastRequest{
 		TextContent: []byte(text),
-	})
+	}
+	err := session.SendMessage(session.websocketConnection, WS_CONF_BO_BROADCAST_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*
@@ -49,47 +72,93 @@ you have to send the WS_CONF_BO_JOIN_REQ (which this function does), wait for th
 breakout rooms are basically meetings= within meetings
 */
 func (session *ZoomSession) RequestBreakoutRoomJoinToken(targetBID string) error {
-	return session.SendMessage(session.websocketConnection, WS_CONF_BO_JOIN_REQ, ConferenceBreakoutRoomJoinRequest{
+	sendBody := ConferenceBreakoutRoomJoinRequest{
 		TargetBID: targetBID,
-	})
+	}
+	err := session.SendMessage(session.websocketConnection, WS_CONF_BO_JOIN_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // equivalent to zoom "join audio" - basically just allows us to have the voice icon next to our name
 func (session *ZoomSession) JoinAudioVoipChannel(status bool) error {
-	return session.SendMessage(session.websocketConnection, WS_AUDIO_VOIP_JOIN_CHANNEL_REQ, AudioVoipJoinChannelRequest{
+	sendBody := AudioVoipJoinChannelRequest{
 		ID:  session.JoinInfo.UserID,
 		BOn: status,
-	})
+	}
+	err := session.SendMessage(session.websocketConnection, WS_AUDIO_VOIP_JOIN_CHANNEL_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
+
+// Signal that our audio channel is ready
+func (session *ZoomSession) SignalAudioStatus(oldAudioConnectionStatus, audioConnectionStatus int) error {
+	sendBody := AudioVoipStatusRequest{
+		OldAudioConnectionStatus: oldAudioConnectionStatus,
+		AudioConnectionStatus:    audioConnectionStatus,
+	}
+	err := session.SendMessage(session.websocketConnection, WS_AUDIO_VOIP_JOIN_CHANNEL_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// {"evt":8203,"body":{"oldAudioConnectionStatus":0,"audioConnectionStatus":1},"seq":3}
+// {"evt":8203,"body":{"oldAudioConnectionStatus":0,"audioConnectionStatus":3,"seq":3}
 
 // NOTE: this does not actually allow you to screenshare, that has yet to implemented.  it just changes the indicator next to your name and will show that you have solid black video
 // true for mute, false for unmute
 func (session *ZoomSession) SetVideoMuted(status bool) error {
-	return session.SendMessage(session.websocketConnection, WS_VIDEO_MUTE_VIDEO_REQ, VideoMuteRequest{
+	sendBody := VideoMuteRequest{
 		ID:  session.JoinInfo.UserID,
 		BOn: status,
-	})
+	}
+	err := session.SendMessage(session.websocketConnection, WS_VIDEO_MUTE_VIDEO_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // NOTE: this does not actually allow you to screenshare, that has yet to implemented.  it will show that you are sharing your screen but the output will be black
 // true for mute, false for unmute
-func (session *ZoomSession) SetScreenShareMuted(status bool) error {
-	return session.SendMessage(session.websocketConnection, WS_CONF_SET_SHARE_STATUS_REQ, SetShareStatusRequest{
-		ID:  session.JoinInfo.UserID,
-		BOn: status,
-	})
+func (session *ZoomSession) SetShareStatus(status bool, shareAudio bool) error {
+	sendBody := ConferenceSetShareStatusRequest{
+		BOnRequest: BOnRequest{
+			ID:  session.JoinInfo.UserID,
+			BOn: status,
+		},
+		BShareAudio: shareAudio,
+	}
+	err := session.SendMessage(session.websocketConnection, WS_CONF_SET_SHARE_STATUS_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // NOTE: this does not actually allow you to output any audio, that has yet to implemented.  it just changes the indicator next to your username.
 // true for mute, false for unmute
 func (session *ZoomSession) SetAudioMuted(status bool) error {
 	// need to be into voip channel to be able to mute ourselves
-	if err := session.JoinAudioVoipChannel(true); err != nil {
+	err := session.JoinAudioVoipChannel(true)
+	if err != nil {
 		return err
 	}
-	return session.SendMessage(session.websocketConnection, WS_AUDIO_MUTE_REQ, AudioMuteRequest{
+
+	sendBody := AudioMuteRequest{
 		BMute: status,
-	})
+	}
+	err = session.SendMessage(session.websocketConnection, WS_AUDIO_MUTE_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (session *ZoomSession) RenameMe(newName string) error {
@@ -98,11 +167,13 @@ func (session *ZoomSession) RenameMe(newName string) error {
 
 // host required to rename others (not self)
 func (session *ZoomSession) RenameById(id int, oldName string, newName string) error {
-	if err := session.SendMessage(session.websocketConnection, WS_CONF_RENAME_REQ, ConferenceRenameRequest{
+	sendBody := ConferenceRenameRequest{
 		ID:     id,
 		Dn2:    []byte(newName),
 		Olddn2: []byte(oldName),
-	}); err != nil {
+	}
+	err := session.SendMessage(session.websocketConnection, WS_CONF_RENAME_REQ, sendBody)
+	if err != nil {
 		return err
 	}
 	if id == session.JoinInfo.UserID {
@@ -113,45 +184,75 @@ func (session *ZoomSession) RenameById(id int, oldName string, newName string) e
 
 // host required
 func (session *ZoomSession) RequestAllMute() error {
-	return session.SendMessage(session.websocketConnection, WS_AUDIO_MUTEALL_REQ, AudioMuteAllRequest{
+	sendBody := AudioMuteAllRequest{
 		BMute: true,
-	})
+	}
+	err := session.SendMessage(session.websocketConnection, WS_AUDIO_MUTEALL_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // host required
 func (session *ZoomSession) SetMuteUponEntry(status bool) error {
-	return session.SendMessage(session.websocketConnection, WS_CONF_SET_MUTE_UPON_ENTRY_REQ, ConferenceSetMuteUponEntryRequest{
+	sendBody := ConferenceSetMuteUponEntryRequest{
 		BOn: status,
-	})
+	}
+	err := session.SendMessage(session.websocketConnection, WS_CONF_SET_MUTE_UPON_ENTRY_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // host required
 func (session *ZoomSession) SetAllowUnmuteAudio(status bool) error {
-	return session.SendMessage(session.websocketConnection, WS_CONF_ALLOW_UNMUTE_AUDIO_REQ, ConferenceAllowUnmuteAudioRequest{
+	sendBody := ConferenceAllowUnmuteAudioRequest{
 		BOn: true,
-	})
+	}
+	err := session.SendMessage(session.websocketConnection, WS_CONF_ALLOW_UNMUTE_AUDIO_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // host required
 func (session *ZoomSession) SetAllowParticipantRename(status bool) error {
-	return session.SendMessage(session.websocketConnection, WS_CONF_ALLOW_PARTICIPANT_RENAME_REQ, ConferenceAllowParticipantRenameRequest{
+	sendBody := ConferenceAllowParticipantRenameRequest{
 		BOn: true,
-	})
+	}
+	err := session.SendMessage(session.websocketConnection, WS_CONF_ALLOW_PARTICIPANT_RENAME_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // host required
 func (session *ZoomSession) SetAllowUnmuteVideo(status bool) error {
-	return session.SendMessage(session.websocketConnection, WS_CONF_ALLOW_UNMUTE_VIDEO_REQ, ConferenceAllowUnmuteVideoRequest{
+	sendBody := ConferenceAllowUnmuteVideoRequest{
 		BOn: true,
-	})
+	}
+	err := session.SendMessage(session.websocketConnection, WS_CONF_ALLOW_UNMUTE_VIDEO_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // host required
 // possible values: CHAT_EVERYONE_PUBLICLY_PRIVATELY = 1, CHAT_HOST_ONLY = 3, CHAT_NO_ONE = 4, CHAT_EVERYONE_PUBLICLY = 5
 func (session *ZoomSession) SetChatLevel(status int) error {
-	return session.SendMessage(session.websocketConnection, WS_CONF_CHAT_PRIVILEDGE_REQ, ConferenceChatPrivilegeRequest{
+	sendBody := ConferenceChatPrivilegeRequest{
 		ChatPriviledge: status,
-	})
+	}
+	err := session.SendMessage(session.websocketConnection, WS_CONF_CHAT_PRIVILEDGE_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*
@@ -166,12 +267,34 @@ CMM_SHARE_SETTING_ANYONE_GRAB = 2 (How many participants can share at the same t
 CMM_SHARE_SETTING_MULTI_SHARE = 3 (How many participants can share at the same time? Multiple participants can share simultaneously)
 */
 func (session *ZoomSession) SetShareLockedStatus(status int) error {
-	return session.SendMessage(session.websocketConnection, WS_CONF_LOCK_SHARE_REQ, ConferenceLockShareRequest{
+	sendBody := ConferenceLockShareRequest{
 		LockShare: status,
-	})
+	}
+	err := session.SendMessage(session.websocketConnection, WS_CONF_LOCK_SHARE_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (session *ZoomSession) SharingSubscribeRequest(id int, size int) error {
+	sendBody := SharingSubscribeRequest{
+		ID:   id,
+		Size: size,
+	}
+	err := session.SendMessage(session.websocketConnection, WS_SHARING_SUBSCRIBE_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // host required
 func (session *ZoomSession) EndMeeting() error {
-	return session.SendMessage(session.websocketConnection, WS_CONF_END_REQ, ConferenceEndRequest{})
+	sendBody := ConferenceEndRequest{}
+	err := session.SendMessage(session.websocketConnection, WS_CONF_END_REQ, sendBody)
+	if err != nil {
+		return err
+	}
+	return nil
 }

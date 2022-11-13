@@ -22,7 +22,7 @@ var msgTypes = map[int]reflect.Type{
 	// sender implemented, working
 	WS_AUDIO_MUTE_REQ: reflect.TypeOf(AudioMuteRequest{}),
 	// sender implemented, working
-	WS_CONF_SET_SHARE_STATUS_REQ: reflect.TypeOf(SetShareStatusRequest{}),
+	WS_CONF_SET_SHARE_STATUS_REQ: reflect.TypeOf(ConferenceSetShareStatusRequest{}),
 	// sender implemented, working
 	WS_CONF_RENAME_REQ: reflect.TypeOf(ConferenceRenameRequest{}),
 	// sender implemented, untested
@@ -40,14 +40,19 @@ var msgTypes = map[int]reflect.Type{
 	WS_CONF_CHAT_PRIVILEDGE_REQ:       reflect.TypeOf(ConferenceChatPrivilegeRequest{}),
 	WS_CONF_AVATAR_PERMISSION_CHANGED: reflect.TypeOf(ConferenceAvatarPermissionChanged{}),
 	// sender implemented, untested
-	WS_CONF_LOCK_SHARE_REQ:           reflect.TypeOf(ConferenceLockShareRequest{}),
-	WS_CONF_LOCAL_RECORD_INDICATION:  reflect.TypeOf(ConferenceLocalRecordIndication{}),
-	WS_CONF_OPTION_INDICATION:        reflect.TypeOf(ConferenceOptionIndication{}),
-	WS_CONF_DC_REGION_INDICATION:     reflect.TypeOf(ConferenceDCRegionIndication{}),
-	WS_AUDIO_SSRC_INDICATION:         reflect.TypeOf(SSRCIndication{}),
-	WS_VIDEO_SSRC_INDICATION:         reflect.TypeOf(SSRCIndication{}),
-	WS_VIDEO_ACTIVE_INDICATION:       reflect.TypeOf(VideoActiveIndication{}),
-	WS_SHARING_STATUS_INDICATION:     reflect.TypeOf(SharingStatusIndication{}),
+	WS_CONF_LOCK_SHARE_REQ:                    reflect.TypeOf(ConferenceLockShareRequest{}),
+	WS_CONF_LOCAL_RECORD_INDICATION:           reflect.TypeOf(ConferenceLocalRecordIndication{}),
+	WS_CONF_OPTION_INDICATION:                 reflect.TypeOf(ConferenceOptionIndication{}),
+	WS_CONF_DC_REGION_INDICATION:              reflect.TypeOf(ConferenceDCRegionIndication{}),
+	WS_AUDIO_SSRC_INDICATION:                  reflect.TypeOf(SSRCIndication{}),
+	WS_VIDEO_SSRC_INDICATION:                  reflect.TypeOf(SSRCIndication{}),
+	WS_VIDEO_ACTIVE_INDICATION:                reflect.TypeOf(VideoActiveIndication{}),
+	WS_SHARING_STATUS_INDICATION:              reflect.TypeOf(SharingStatusIndication{}),
+	WS_SHARING_ASSIGNED_SENDING_SSRC:          reflect.TypeOf(SharingAssignedSendingSsrcResponse{}),
+	WS_SHARING_ENCRYPT_KEY_INDICATION:         reflect.TypeOf(SharingEncryptKeyIndication{}),
+	WS_SHARING_RECEIVING_CHL_READY_INDICATION: reflect.TypeOf(SharingReceivingChannelReadyIndication{}),
+	WS_SHARING_RECEIVING_CHL_CLOSE_INDICATION: reflect.TypeOf(SharingReceivingChannelCloseIndication{}),
+
 	WS_CONF_COHOST_CHANGE_INDICATION: reflect.TypeOf(ConferenceCohostChangeIndication{}),
 	WS_AUDIO_ASN_INDICATION:          reflect.TypeOf(AudioAsnIndication{}),
 	WS_CONF_BO_ATTRIBUTE_INDICATION:  reflect.TypeOf(ConferenceBreakoutRoomAttributeIndication{}),
@@ -74,7 +79,8 @@ func GetMessageBody(message *GenericZoomMessage) (interface{}, error) {
 		return nil, fmt.Errorf("Failed to get message body: missing type definition in zoom/message.go")
 	}
 	p := reflect.New(typ).Interface()
-	if err := json.Unmarshal(message.Body, p); err != nil {
+	err := json.Unmarshal(message.Body, p)
+	if err != nil {
 		return nil, fmt.Errorf("Failed to parse body JSON: %+v", err)
 	}
 	return p, nil
@@ -90,6 +96,7 @@ func (session *ZoomSession) SendMessage(connection *websocket.Conn, eventNumber 
 		Evt: eventNumber,
 		Seq: session.sendSequenceNumber,
 	}
+
 	if body != nil {
 		// body is a json.rawmessage so we have to do this
 		bodyBytes, err := json.Marshal(body)
