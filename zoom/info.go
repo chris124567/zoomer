@@ -24,7 +24,8 @@ func httpGet(client *http.Client, url string, headers http.Header) (*http.Respon
 	return client.Do(request)
 }
 
-func (session *ZoomSession) generateSignature(meetingNumber string) string {
+func (session *ZoomSession) generateSignature() string {
+	meetingNumber := session.MeetingNumber
 	timestamp := strconv.FormatInt((time.Now().UTC().UnixNano()/1e6)-30000, 10)
 
 	h := hmac.New(sha256.New, []byte(session.ZoomJwtApiSecret))
@@ -40,7 +41,7 @@ func (session *ZoomSession) GetMeetingInfoData() (*MeetingInfo, string, error) {
 	values.Set("meetingNumber", session.MeetingNumber)
 	values.Set("userName", session.Username)
 	values.Set("passWord", session.MeetingPassword)
-	values.Set("signature", session.generateSignature(session.MeetingNumber))
+	values.Set("signature", session.generateSignature())
 	// values.Set("apiKey", ZOOM_JWT_API_KEY)
 	values.Set("apiKey", session.ZoomJwtApiKey)
 	values.Set("lang", "en-US")
@@ -56,8 +57,14 @@ func (session *ZoomSession) GetMeetingInfoData() (*MeetingInfo, string, error) {
 	values.Set("captchaName", "")
 	values.Set("suid", "")
 	values.Set("callback", "axiosJsonpCallback1")
+	infoUrl := (&url.URL{
+		Scheme:   "https",
+		Host:     "zoom.us",
+		Path:     "/api/v1/wc/info",
+		RawQuery: values.Encode(),
+	}).String()
 
-	response, err := httpGet(session.httpClient, fmt.Sprintf("https://zoom.us/api/v1/wc/info?%s", values.Encode()), httpHeaders())
+	response, err := httpGet(session.httpClient, infoUrl, httpHeaders())
 	if err != nil {
 		return nil, "", err
 	}
@@ -82,7 +89,9 @@ func (session *ZoomSession) GetMeetingInfoData() (*MeetingInfo, string, error) {
 		return newS[:e]
 	}
 
-	if err = json.Unmarshal(getStringInBetweenTwoString(data, []byte("osJsonpCallback1("), []byte(")")), &meetingInfo); err != nil {
+	jsonData := getStringInBetweenTwoString(data, []byte("osJsonpCallback1("), []byte(")"))
+	err = json.Unmarshal(jsonData, &meetingInfo)
+	if err != nil {
 		return nil, "", err
 	}
 
@@ -99,19 +108,44 @@ func (session *ZoomSession) GetMeetingInfoData() (*MeetingInfo, string, error) {
 	return &meetingInfo, cookieString, nil
 }
 
+func getRwgPingServer(meetingInfo *MeetingInfo) *RwgInfo {
+	var rwgPingInfo RwgInfo
+
+	for key, value := range meetingInfo.Result.EncryptedRWC {
+		rwgPingInfo.Rwg = key
+		rwgPingInfo.RwcAuth = value
+		break
+	}
+
+	return &rwgPingInfo
+}
+
+// @TODO(bug): if meeting not joinable, returns all false.
 func (session *ZoomSession) getRwgPingData(meetingInfo *MeetingInfo, pingRwcServer *RwgInfo) (*RwgInfo, error) {
+
 	headers := httpHeaders()
 	headers["Content-Type"] = []string{"application/x-www-form-urlencoded"}
 
-	response, err := httpGet(session.httpClient, fmt.Sprintf("https://%s/wc/ping/%s?ts=%d&auth=%s&rwcToken=%s&dmz=1", pingRwcServer.Rwg, meetingInfo.Result.MeetingNumber, meetingInfo.Result.Ts, meetingInfo.Result.Auth, pingRwcServer.RwcAuth), headers)
+	pingUrl := (&url.URL{
+		Scheme: "https",
+		Host:   pingRwcServer.Rwg,
+		Path:   fmt.Sprintf("/wc/ping/%s", meetingInfo.Result.MeetingNumber),
+		// @TODO(security): THE ORDER OF PARAMTERS IS VERY IMPORTANT! IT DOES NOT WORK OTHERWISE
+		RawQuery: fmt.Sprintf("ts=%d&auth=%s&rwcToken=%s&dmz=1", meetingInfo.Result.Ts, meetingInfo.Result.Auth, pingRwcServer.RwcAuth),
+		// RawQuery: values.Encode(),
+	}).String()
+
+	response, err := httpGet(session.httpClient, pingUrl, headers)
 	if err != nil {
 		return nil, err
 	}
 	defer response.Body.Close()
 
 	var rwgPingInfo RwgInfo
-	if err := json.NewDecoder(response.Body).Decode(&rwgPingInfo); err != nil {
+	err = json.NewDecoder(response.Body).Decode(&rwgPingInfo)
+	if err != nil {
 		return nil, err
 	}
+
 	return &rwgPingInfo, nil
 }

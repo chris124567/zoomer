@@ -112,13 +112,21 @@ type BOnRequest struct {
 	ID  int  `json:"id,omitempty"` // default is you, if you specify id (I think??) you can get other people
 }
 
+type ConferenceSetShareStatusRequest struct {
+	BOnRequest
+	BShareAudio bool `json:"bShareAudio"`
+}
 type ConferenceSetMuteUponEntryRequest BOnRequest
 type ConferenceAllowUnmuteAudioRequest BOnRequest
 type ConferenceAllowParticipantRenameRequest BOnRequest
 type ConferenceAllowUnmuteVideoRequest BOnRequest
 type AudioVoipJoinChannelRequest BOnRequest
 type VideoMuteRequest BOnRequest
-type SetShareStatusRequest BOnRequest
+
+type AudioVoipStatusRequest struct {
+	OldAudioConnectionStatus int `json:"oldAudioConnectionStatus"`
+	AudioConnectionStatus    int `json:"audioConnectionStatus"`
+}
 
 type ConferenceChatPrivilegeRequest struct {
 	ChatPriviledge int `json:"chatPriviledge"`
@@ -251,6 +259,36 @@ type ConferenceHoldChangeIndication struct {
 	BHold bool `json:"bHold"`
 }
 
+type SharingEncryptKeyIndication struct {
+	AdditionalType int    `json:"additionalType"`
+	EncryptKey     string `json:"encryptKey"`
+}
+
+type SharingSubscribeRequest struct {
+	ID   int `json:"id"`
+	Size int `json:"size"`
+}
+
+type SharingAssignedSendingSsrcResponse struct {
+	SSRC int `json:"ssrc"`
+}
+
+// WebRTC audio related
+type SharingReceivingChannelReadyIndication struct {
+	SSRC        int  `json:"ssrc"`
+	StreamIndex int  `json:"streamIndex"`
+	VideoMode   bool `json:"videoMode"`
+}
+
+type SharingReceivingChannelCloseIndication struct {
+	SSRC int `json:"ssrc"`
+}
+
+type DataChannelSendOfferToRWG struct {
+	Offer string `json:"offer"`
+	Type  int    `json:"type"`
+}
+
 type ConferenceBreakoutRoomAttributeIndicationDataAlias ConferenceBreakoutRoomAttributeIndicationData
 
 func (b *ConferenceBreakoutRoomAttributeIndicationDataAlias) UnmarshalJSON(data []byte) error {
@@ -264,7 +302,8 @@ func (b *ConferenceBreakoutRoomAttributeIndicationDataAlias) UnmarshalJSON(data 
 	}
 
 	real := ConferenceBreakoutRoomAttributeIndicationData{}
-	if err := json.Unmarshal(dataBytes, &real); err != nil {
+	err = json.Unmarshal(dataBytes, &real)
+	if err != nil {
 		return err
 	}
 	*b = (ConferenceBreakoutRoomAttributeIndicationDataAlias(real))
@@ -277,7 +316,7 @@ func (b ConferenceBreakoutRoomAttributeIndicationDataAlias) MarshalJSON() ([]byt
 	if err != nil {
 		return nil, err
 	}
-	return []byte("\"" + base64.StdEncoding.EncodeToString(jsonBytes) + "\""), nil
+	return []byte("\"" + base64.StdEncoding.EncodeToString([]byte(jsonBytes)) + "\""), nil
 }
 
 // golang usually allows []bytes to be represented by b64 strings but zoom sends them with no padding which breaks it so this is a custom type to allow for lack of padding

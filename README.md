@@ -107,7 +107,7 @@ Also, the server and client both have sequence numbers ("seq") for the messages 
 - Make it more extensible
 - Joining breakout room support
 - More comments and documentation
-- Support audio/video
+- Support audio/video - partial support for decrypting screen share is added. 
 
 ## REMARK ON MAINTENANCE AND STABILITY
 This is hobbyist software that has no guarantees of being maintained or supported.  Please don't use it anywhere near production.
