@@ -25,20 +25,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// get the rwc token and other info needed to construct the websocket url for the meeting
-	meetingInfo, cookieString, err := session.GetMeetingInfoData()
-	if err != nil {
-		panic(err)
-	}
-
-	// get the url for the websocket connection.  always pass false for the second parameter (its used internally to keep track of some parameters used for getting out of waiting rooms)
-	websocketUrl, err := session.GetWebsocketUrl(meetingInfo, false)
-	if err != nil {
-		panic(err)
-	}
 
 	// the third argument is the "onmessage" function.  it will be triggered everytime the websocket client receives a message
-	panic(session.MakeWebsocketConnection(websocketUrl, cookieString, func(session *zoom.ZoomSession, message zoom.Message) error {
+	panic(session.MakeWebsocketConnection(func(session *zoom.ZoomSession, message zoom.Message) error {
 		switch m := message.(type) {
 		case *zoom.ConferenceRosterIndication:
 			// if we get an indication that someone joined the meeting, welcome them
@@ -94,9 +83,9 @@ func handleChatMessage(session *zoom.ZoomSession, body *zoom.ConferenceChatIndic
 	case "screenshare":
 		// if we get no arguments or "on", turn screenshare on
 		if len(args) == 0 || args[0] == "on" {
-			session.SetScreenShareMuted(false)
+			session.SetShareStatus(true, false)
 		} else if args[0] == "off" {
-			session.SetScreenShareMuted(true)
+			session.SetShareStatus(false, false)
 		}
 	case "chatlevel":
 		// take the first argument, convert to integer and try to use that to set the room chat level
