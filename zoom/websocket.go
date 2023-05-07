@@ -44,25 +44,31 @@ func (session *ZoomSession) GetWebsocketUrl(meetingInfo *MeetingInfo, wasInWaiti
 
 	// query string for websocket url
 	values := url.Values{}
-	values.Set("rwcAuth", rwgInfo.RwcAuth)
 	values.Set("dn2", base64.StdEncoding.EncodeToString([]byte(meetingInfo.Result.UserName)))
-	values.Set("auth", meetingInfo.Result.Auth)
-	values.Set("sign", meetingInfo.Result.Sign)
 	values.Set("browser", userAgentShorthand)
 	values.Set("trackAuth", meetingInfo.Result.TrackAuth)
 	values.Set("mid", meetingInfo.Result.Mid)
 	values.Set("tid", meetingInfo.Result.Tid)
 	values.Set("lang", "en")
 	values.Set("ts", strconv.FormatInt(meetingInfo.Result.Ts, 10))
+	values.Set("auth", meetingInfo.Result.Auth)
+	values.Set("sign", meetingInfo.Result.Sign)
 	// values.Set("ZM-CID", uuid.New().String()) // random uuid
 	values.Set("ZM-CID", session.HardwareID.String()) // this is a hardware id.  you shouldnt have it change a bunch of times per ip or you will look highly suspicious
 	values.Set("_ZM_MTG_TRACK_ID", "")
-	values.Set("jscv", "1.8.6")
+	values.Set("jscv", "2.12.0")
 	// values.Set("jscv", "1.8.5")
-	values.Set("fromNginx", "false")
-	values.Set("zak", "")
+	values.Set("fromNginx", "undefined")
 	values.Set("mpwd", meetingInfo.Result.Password)
+	values.Set("zak", "")
+	values.Set("signType", "sdk")
+	values.Set("sign", meetingInfo.Result.Sign)
+	values.Set("rwcAuth", rwgInfo.RwcAuth)
 	values.Set("as_type", "1")
+	values.Set("email", "0")
+	values.Set("tk", "")
+	values.Set("cfs", "0")
+	values.Set("clientCaps", "595")
 
 	/*
 	   if you set as_type 2 all the chat messages will be encrypted.  i didnt do this beacuse it is much easier to just set as_type=1 than figuring out the whole aes-gcm sha256 mess of IVs, tags, etc
@@ -116,8 +122,7 @@ func (session *ZoomSession) GetWebsocketUrl(meetingInfo *MeetingInfo, wasInWaiti
 	   keys are derived from some kind of sha256 hmac of the message sent in this message (Evt: 7938; Seq: 4): {"encryptKey":"2mLZj3gEh5RRoHCBQ5n2LFe8ur4HqcKkwF77zxU0ilM"}
 	*/
 	// unknown
-	values.Set("tk", "")
-	values.Set("cfs", "0")
+
 	// "opt" is a parameter to specify a meeting within a meeting, for instance breakout rooms or the main meeting in a meeting with waiting room enabled
 	if wasInWaitingRoom {
 		values.Set("opt", session.meetingOpt)

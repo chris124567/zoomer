@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -25,11 +24,15 @@ func httpGet(client *http.Client, url string, headers http.Header) (*http.Respon
 }
 
 func (session *ZoomSession) generateSignature(meetingNumber string) string {
-	timestamp := strconv.FormatInt((time.Now().UTC().UnixNano()/1e6)-30000, 10)
+	ts := time.Now().Unix()
+
+	header := []byte(`{"alg":"HS256","typ":"JWT"}`)
+	payload := []byte(fmt.Sprintf(`{"sdkKey":"%s","iat":%d,"exp":%d,"mn":%s,"role":0}`, session.ZoomJwtApiKey, ts, ts+1800, meetingNumber))
+	message := base64.URLEncoding.EncodeToString(header) + "." + base64.URLEncoding.EncodeToString(payload)
 
 	h := hmac.New(sha256.New, []byte(session.ZoomJwtApiSecret))
-	h.Write([]byte(base64.StdEncoding.EncodeToString([]byte(session.ZoomJwtApiKey + meetingNumber + timestamp + ZOOM_ROLE))))
-	return base64.StdEncoding.EncodeToString([]byte(session.ZoomJwtApiKey + "." + meetingNumber + "." + timestamp + "." + ZOOM_ROLE + "." + base64.StdEncoding.EncodeToString(h.Sum(nil))))
+	h.Write([]byte(message))
+	return message + "." + base64.URLEncoding.EncodeToString(h.Sum(nil))
 }
 
 func (session *ZoomSession) GetMeetingInfoData() (*MeetingInfo, string, error) {
@@ -45,8 +48,7 @@ func (session *ZoomSession) GetMeetingInfoData() (*MeetingInfo, string, error) {
 	values.Set("apiKey", session.ZoomJwtApiKey)
 	values.Set("lang", "en-US")
 	values.Set("userEmail", "")
-	values.Set("cv", "1.8.6")
-	// values.Set("cv", "1.8.5")
+	values.Set("cv", "2.12.0")
 	values.Set("proxy", "1")
 	values.Set("sdkOrigin", "aHR0cDovL2xvY2FsaG9zdDo5OTk5")
 	values.Set("tk", "")
@@ -56,6 +58,7 @@ func (session *ZoomSession) GetMeetingInfoData() (*MeetingInfo, string, error) {
 	values.Set("captchaName", "")
 	values.Set("suid", "")
 	values.Set("callback", "axiosJsonpCallback1")
+	values.Set("signatureType", "sdk")
 
 	response, err := httpGet(session.httpClient, fmt.Sprintf("https://zoom.us/api/v1/wc/info?%s", values.Encode()), httpHeaders())
 	if err != nil {
@@ -101,7 +104,7 @@ func (session *ZoomSession) GetMeetingInfoData() (*MeetingInfo, string, error) {
 
 func (session *ZoomSession) getRwgPingData(meetingInfo *MeetingInfo, pingRwcServer *RwgInfo) (*RwgInfo, error) {
 	headers := httpHeaders()
-	headers["Content-Type"] = []string{"application/x-www-form-urlencoded"}
+	headers.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	response, err := httpGet(session.httpClient, fmt.Sprintf("https://%s/wc/ping/%s?ts=%d&auth=%s&rwcToken=%s&dmz=1", pingRwcServer.Rwg, meetingInfo.Result.MeetingNumber, meetingInfo.Result.Ts, meetingInfo.Result.Auth, pingRwcServer.RwcAuth), headers)
 	if err != nil {

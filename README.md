@@ -7,7 +7,7 @@ Here is a demo of a basic, ~130 lines of code bot:
 
 ## WEB SDK
 
-I created this by reverse engineering the Zoom Web SDK.  Regular web joins are captcha-gated but web SDK joins [are not](https://devforum.zoom.us/t/remove-recaptcha-on-webinars-websdk1-7-9/23054/25).  I use an API only used by the Web SDK to get tokens needed to join the meeting.  This means you need a Zoom API key/secret, specifically a JWT one.  These can be obtained on the Zoom [App Marketplace](https://marketplace.zoom.us/user/build) site.  The demo at `cmd/zoomer/main.go` reads these from the environment as `ZOOM_JWT_API_KEY` and `ZOOM_JWT_API_SECRET`.
+I created this by reverse engineering the Zoom Web SDK.  Regular web joins are captcha-gated but web SDK joins [are not](https://devforum.zoom.us/t/remove-recaptcha-on-webinars-websdk1-7-9/23054/25).  I use an API only used by the Web SDK to get tokens needed to join the meeting.  This means you need a Zoom API key/secret, specifically a "Meeting SDK" one.  These can be obtained on the Zoom [App Marketplace](https://marketplace.zoom.us/develop/create) site: click Meeting SDK (Create) -> name app, disable publishing to marketplace -> fill descriptions and contact information with anything you want -> click App Credentials.  The demo at `cmd/zoomer/main.go` reads these from the environment as `ZOOM_API_KEY` and `ZOOM_API_SECRET`.
 
 ### NOTE
 Because the API keys are associated with your account, using this software may get your Zoom account banned (reverse engineering is against the Zoom Terms of Service).  Please do not use this on an important account.
@@ -19,7 +19,7 @@ Because the API keys are associated with your account, using this software may g
 $ go get github.com/chris124567/zoomer
 $ cd $GOPATH/src/github.com/chris124567/zoomer
 $ scripts/build.sh
-$ ZOOM_JWT_API_KEY="xxx" ZOOM_JWT_API_SECRET="xxx" ./zoomer -meetingNumber xxxxx -password xxxxx
+$ ZOOM_API_KEY="xxx" ZOOM_API_SECRET="xxx" ./zoomer -meetingNumber xxxxx -password xxxxx
 ```
 
 Feel free to use the demo as a template.  If you want to use the library elsewhere just import `github.com/chris124567/zoomer/pkg/zoom`.
