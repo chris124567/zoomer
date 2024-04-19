@@ -1,3 +1,6 @@
+## Recording video/audio from video conferencing calls
+If you’re looking to use this repo to retrieve video or audio streams from meeting platforms like Zoom, Google Meet, Microsoft Teams, consider checking out [Recall.ai](https://www.recall.ai), an API for meeting recording.
+
 # zoomer - Bot library for Zoom meetings
 
 Good bot support is part of what makes Discord so nice to use.  Unfortunately, the official Zoom API is basically only useful for scheduling meetings and using Zoom Chat, not for making [in-meeting](https://devforum.zoom.us/t/in-meeting-chat-api/39948/4) bots.  So I decided to bring this feature to Zoom myself.
