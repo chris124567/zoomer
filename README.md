@@ -1,5 +1,5 @@
 ## Recording video/audio from video conferencing calls
-If you’re looking to use this repo to retrieve video or audio streams from meeting platforms like Zoom, Google Meet, Microsoft Teams, consider checking out [Recall.ai](https://www.recall.ai), an API for meeting recording.
+If you’re looking to use this repo to retrieve video or audio streams from meeting platforms like Zoom, Google Meet, Microsoft Teams, consider checking out [Recall.ai](https://www.recall.ai/?utm_source=github&utm_medium=sponsorship&utm_campaign=zoomer), an API for meeting recording.
 
 # zoomer - Bot library for Zoom meetings
 
